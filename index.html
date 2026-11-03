@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Калькулятор мотивации</title>
+    <style>
+        body {
+            font-family: 'Inter', -apple-system, sans-serif;
+            background-color: transparent;
+            margin: 0;
+            padding: 10px;
+            color: #2c3e50;
+        }
+        .calc-card {
+            background: #fff;
+            max-width: 480px;
+            padding: 24px;
+            border-radius: 12px;
+            box-shadow: 0 4px 16px rgba(0,0,0,0.08);
+            border: 1.5px solid #e0e6ed;
+            box-sizing: border-box;
+        }
+        h3 {
+            font-size: 16px;
+            font-weight: 800;
+            color: #1a1a2e;
+            text-transform: uppercase;
+            margin-top: 0;
+            margin-bottom: 16px;
+            border-bottom: 2px solid #1a1a2e;
+            padding-bottom: 8px;
+        }
+        .form-group {
+            margin-bottom: 14px;
+        }
+        label {
+            display: block;
+            font-size: 13px;
+            font-weight: 700;
+            margin-bottom: 6px;
+            color: #555;
+        }
+        input {
+            width: 100%;
+            padding: 10px 12px;
+            border: 1.5px solid #cbd5e1;
+            border-radius: 8px;
+            font-size: 15px;
+            box-sizing: border-box;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+        input:focus {
+            border-color: #2980b9;
+        }
+        .result-box {
+            margin-top: 20px;
+            background: #f8f9fc;
+            padding: 16px;
+            border-radius: 8px;
+            border-left: 4px solid #27ae60;
+            border: 1px solid #e0e6ed;
+            border-left-width: 4px;
+        }
+        .result-row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 8px;
+            font-size: 14px;
+        }
+        .result-row span:first-child {
+            color: #666;
+        }
+        .result-row span:last-child {
+            font-weight: 600;
+            color: #1a1a2e;
+        }
+        .result-total {
+            font-weight: 800;
+            font-size: 15px;
+            color: #1a1a2e;
+            border-top: 1px solid #e0e6ed;
+            padding-top: 10px;
+            margin-top: 10px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .loading-text {
+            font-size: 11px;
+            color: #7f8c8d;
+            font-weight: normal;
+        }
+    </style>
+</head>
+<body>
+
+<div class="calc-card">
+    <h3>Калькулятор расчёта дохода</h3>
+    
+    <div class="form-group">
+        <label>Окладная часть (₽):</label>
+        <input type="number" id="baseSalary" value="65000" step="1000" oninput="calculate()">
+    </div>
+    
+    <div class="form-group">
+        <label>Текущий курс USD / RUB: <span class="loading-text" id="rateStatus">загрузка курса...</span></label>
+        <input type="number" id="usdRate" value="81.63" step="0.1" oninput="calculate()">
+    </div>
+    
+    <div class="form-group">
+        <label>План продаж ($):</label>
+        <input type="number" id="targetSales" value="10000" step="500" oninput="calculate()">
+    </div>
+    
+    <div class="form-group">
+        <label>Фактический результат продаж ($):</label>
+        <input type="number" id="actualSales" value="9000" step="500" oninput="calculate()">
+    </div>
+    
+    <div class="result-box" id="resultBox">
+        <div class="result-row">
+            <span>Статус плана:</span> 
+            <span id="planStatus" style="color: #c0392b; font-weight: bold;">Не выполнен (2%)</span>
+        </div>
+        <div class="result-row">
+            <span>Бонус в долларах:</span> 
+            <span id="bonusUSD">$180</span>
+        </div>
+        <div class="result-row">
+            <span>Бонус в рублях:</span> 
+            <span id="bonusRUB">14 693 ₽</span>
+        </div>
+        <div class="result-total">
+            <span>Итоговый доход:</span> 
+            <span id="totalIncome">79 693 ₽</span>
+        </div>
+    </div>
+</div>
+
+<script>
+    // Автоматическая подгрузка актуального курса ЦБ
+    async function fetchUsdRate() {
+        try {
+            let response = await fetch('https://www.cbr-xml-daily.ru/daily_json.js');
+            let data = await response.json();
+            let rate = data.Valute.USD.Value;
+            document.getElementById('usdRate').value = rate.toFixed(2);
+            document.getElementById('rateStatus').innerText = "курс ЦБ РФ актуален";
+            calculate();
+        } catch (e) {
+            document.getElementById('rateStatus').innerText = "используется базовый курс";
+            calculate();
+        }
+    }
+
+    function calculate() {
+        let base = parseFloat(document.getElementById('baseSalary').value) || 0;
+        let rate = parseFloat(document.getElementById('usdRate').value) || 0;
+        let target = parseFloat(document.getElementById('targetSales').value) || 0;
+        let actual = parseFloat(document.getElementById('actualSales').value) || 0;
+        
+        let isCompleted = actual >= target;
+        let percent = isCompleted ? 0.05 : 0.02;
+        let bonusUSD = actual * percent;
+        let bonusRUB = bonusUSD * rate;
+        let totalRUB = base + bonusRUB;
+        
+        let statusEl = document.getElementById('planStatus');
+        if (isCompleted) {
+            statusEl.innerText = "Выполнен (5%)";
+            statusEl.style.color = "#27ae60";
+        } else {
+            statusEl.innerText = "Не выполнен (2%)";
+            statusEl.style.color = "#c0392b";
+        }
+        
+        document.getElementById('bonusUSD').innerText = "$" + bonusUSD.toLocaleString('ru-RU', {maximumFractionDigits: 0});
+        document.getElementById('bonusRUB').innerText = Math.round(bonusRUB).toLocaleString('ru-RU') + " ₽";
+        document.getElementById('totalIncome').innerText = Math.round(totalRUB).toLocaleString('ru-RU') + " ₽";
+    }
+
+    // Запускаем при загрузке страницы
+    fetchUsdRate();
+</script>
+
+</body>
+</html>
